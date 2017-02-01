@@ -1,0 +1,33 @@
+version: '2.0'
+
+services:
+  terraform:
+    image: hashicorp/terraform
+    working_dir: /workdir
+    environment:
+      # amazon
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+
+      # azure
+      ARM_SUBSCRIPTION_ID: ${ARM_SUBSCRIPTION_ID}
+      ARM_CLIENT_ID: ${ARM_CLIENT_ID}
+      ARM_CLIENT_SECRET: ${ARM_CLIENT_SECRET}
+      ARM_TENANT_ID: ${ARM_TENANT_ID}
+    volumes:
+      - .:/workdir
+
+  packer:
+    image: hashicorp/packer
+    working_dir: /workdir
+    volumes:
+      - .:/workdir
+
+  ansible:
+    image: incaller/ansible-apt
+    working_dir: /workdir
+    entrypoint: /usr/bin/ansible
+    volumes:
+      - .:/workdir
+
