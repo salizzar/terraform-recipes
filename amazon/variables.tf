@@ -16,31 +16,11 @@ variable "aws_subnet" {
     type = "map"
 
     default = {
-        pub_1_cidr_block = ""
-        pub_1_availability_zone = ""
+        pub_cidr_blocks = []
+        pub_availability_zones = []
 
-        pub_2_cidr_block = ""
-        pub_2_availability_zone = ""
-
-        pub_3_cidr_block = ""
-        pub_3_availability_zone = ""
-
-        prv_1_cidr_block = ""
-        prv_1_availability_zone = ""
-
-        prv_2_cidr_block = ""
-        prv_2_availability_zone = ""
-
-        prv_3_cidr_block = ""
-        prv_3_availability_zone = ""
-    }
-}
-
-variable "aws_route" {
-    type = "map"
-
-    default = {
-        destination_cidr_block = ""
+        prv_cidr_blocks = []
+        prv_availability_zones = []
     }
 }
 

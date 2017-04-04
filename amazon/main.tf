@@ -32,7 +32,7 @@ resource "aws_eip" "eip_nat" {
 
 resource "aws_nat_gateway" "default" {
     allocation_id   = "${aws_eip.eip_nat.id}"
-    subnet_id       = "${aws_subnet.pub_1.id}"
+    subnet_id       = "${aws_subnet.pub.1.id}"
 
     depends_on      = [ "aws_internet_gateway.default" ]
 }
@@ -54,60 +54,26 @@ resource "aws_route_table" "pub" {
     }
 }
 
-resource "aws_subnet" "pub_1" {
+resource "aws_subnet" "pub" {
     vpc_id  = "${aws_vpc.vpc.id}"
 
-    cidr_block              = "${var.aws_subnet["pub_1_cidr_block"]}"
-    availability_zone       = "${var.aws_subnet["pub_1_availability_zone"]}"
+    count = "${length(var.aws_subnet["pub_cidr_blocks"])}"
+
+    cidr_block              = "${element(var.aws_subnet["pub_cidr_blocks"], count.index)}"
+    availability_zone       = "${element(var.aws_subnet["pub_availability_zones"], count.index)}"
     map_public_ip_on_launch = "true"
 
     tags {
-        Name = "${var.aws_subnet["pub_1_availability_zone"]}_pub"
+        Name = "${element(var.aws_subnet["pub_availability_zones"], count.index)}_pub"
         VPC = "${aws_vpc.vpc.tags.Name}"
         CreatedBy = "terraform"
     }
 }
 
-resource "aws_subnet" "pub_2" {
-    vpc_id  = "${aws_vpc.vpc.id}"
+resource "aws_route_table_association" "pub" {
+    count = "${length(var.aws_subnet["pub_cidr_blocks"])}"
 
-    cidr_block              = "${var.aws_subnet["pub_2_cidr_block"]}"
-    availability_zone       = "${var.aws_subnet["pub_2_availability_zone"]}"
-    map_public_ip_on_launch = "true"
-
-    tags {
-        Name = "${var.aws_subnet["pub_2_availability_zone"]}_pub"
-        VPC = "${aws_vpc.vpc.tags.Name}"
-        CreatedBy = "terraform"
-    }
-}
-
-resource "aws_subnet" "pub_3" {
-    vpc_id  = "${aws_vpc.vpc.id}"
-
-    cidr_block              = "${var.aws_subnet["pub_3_cidr_block"]}"
-    availability_zone       = "${var.aws_subnet["pub_3_availability_zone"]}"
-    map_public_ip_on_launch = "true"
-
-    tags {
-        Name = "${var.aws_subnet["pub_3_availability_zone"]}_pub"
-        VPC = "${aws_vpc.vpc.tags.Name}"
-        CreatedBy = "terraform"
-    }
-}
-
-resource "aws_route_table_association" "pub_1" {
-    subnet_id       = "${aws_subnet.pub_1.id}"
-    route_table_id  = "${aws_route_table.pub.id}"
-}
-
-resource "aws_route_table_association" "pub_2" {
-    subnet_id       = "${aws_subnet.pub_2.id}"
-    route_table_id  = "${aws_route_table.pub.id}"
-}
-
-resource "aws_route_table_association" "pub_3" {
-    subnet_id       = "${aws_subnet.pub_3.id}"
+    subnet_id       = "${element(aws_subnet.pub.*.id, count.index)}"
     route_table_id  = "${aws_route_table.pub.id}"
 }
 
@@ -128,57 +94,25 @@ resource "aws_route_table" "prv" {
     }
 }
 
-resource "aws_subnet" "prv_1" {
+resource "aws_subnet" "prv" {
     vpc_id  = "${aws_vpc.vpc.id}"
 
-    cidr_block          = "${var.aws_subnet["prv_1_cidr_block"]}"
-    availability_zone   = "${var.aws_subnet["prv_1_availability_zone"]}"
+    count = "${length(var.aws_subnet["prv_cidr_blocks"])}"
+
+    cidr_block              = "${element(var.aws_subnet["prv_cidr_blocks"], count.index)}"
+    availability_zone       = "${element(var.aws_subnet["prv_availability_zones"], count.index)}"
 
     tags {
-        Name = "${var.aws_subnet["prv_1_availability_zone"]}_prv"
+        Name = "${element(var.aws_subnet["prv_availability_zones"], count.index)}_prv"
         VPC = "${aws_vpc.vpc.tags.Name}"
         CreatedBy = "terraform"
     }
 }
 
-resource "aws_subnet" "prv_2" {
-    vpc_id  = "${aws_vpc.vpc.id}"
+resource "aws_route_table_association" "prv" {
+    count = "${length(var.aws_subnet["prv_cidr_blocks"])}"
 
-    cidr_block          = "${var.aws_subnet["prv_2_cidr_block"]}"
-    availability_zone   = "${var.aws_subnet["prv_2_availability_zone"]}"
-
-    tags {
-        Name = "${var.aws_subnet["prv_2_availability_zone"]}_prv"
-        VPC = "${aws_vpc.vpc.tags.Name}"
-        CreatedBy = "terraform"
-    }
-}
-
-resource "aws_subnet" "prv_3" {
-    vpc_id  = "${aws_vpc.vpc.id}"
-
-    cidr_block          = "${var.aws_subnet["prv_3_cidr_block"]}"
-    availability_zone   = "${var.aws_subnet["prv_3_availability_zone"]}"
-
-    tags {
-        Name = "${var.aws_subnet["prv_3_availability_zone"]}_prv"
-        VPC = "${aws_vpc.vpc.tags.Name}"
-        CreatedBy = "terraform"
-    }
-}
-
-resource "aws_route_table_association" "prv_1" {
-    subnet_id       = "${aws_subnet.prv_1.id}"
-    route_table_id  = "${aws_route_table.prv.id}"
-}
-
-resource "aws_route_table_association" "prv_2" {
-    subnet_id       = "${aws_subnet.prv_2.id}"
-    route_table_id  = "${aws_route_table.prv.id}"
-}
-
-resource "aws_route_table_association" "prv_3" {
-    subnet_id       = "${aws_subnet.prv_3.id}"
+    subnet_id       = "${element(aws_subnet.prv.*.id, count.index)}"
     route_table_id  = "${aws_route_table.prv.id}"
 }
 
@@ -266,7 +200,7 @@ resource "aws_instance" "bastion" {
     instance_type   = "t2.nano"
     key_name        = "terraform"
 
-    subnet_id              = "${aws_subnet.pub_2.id}"
+    subnet_id              = "${aws_subnet.pub.1.id}"
     vpc_security_group_ids = [ "${aws_security_group.bastion.id}" ]
 
     tags {
