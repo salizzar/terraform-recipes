@@ -24,3 +24,13 @@ variable "aws_subnet" {
     }
 }
 
+variable "aws_instance" {
+    type = "map"
+
+    default = {
+        instance_type   = ""
+        ami             = ""
+        key_name        = ""
+    }
+}
+

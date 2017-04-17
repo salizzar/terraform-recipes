@@ -19,7 +19,7 @@ resource "aws_internet_gateway" "default" {
 
     tags {
         Name = "${var.aws_vpc["name"]}_igw"
-        VPC = "${aws_vpc.vpc.tags.Name}"
+        VirtualNetwork = "${aws_vpc.vpc.tags.Name}"
         CreatedBy = "terraform"
     }
 }
@@ -49,7 +49,7 @@ resource "aws_route_table" "pub" {
 
     tags {
         Name = "${var.aws_vpc["name"]}_rt_pub"
-        VPC = "${aws_vpc.vpc.tags.Name}"
+        VirtualNetwork = "${aws_vpc.vpc.tags.Name}"
         CreatedBy = "terraform"
     }
 }
@@ -65,7 +65,7 @@ resource "aws_subnet" "pub" {
 
     tags {
         Name = "${element(var.aws_subnet["pub_availability_zones"], count.index)}_pub"
-        VPC = "${aws_vpc.vpc.tags.Name}"
+        VirtualNetwork = "${aws_vpc.vpc.tags.Name}"
         CreatedBy = "terraform"
     }
 }
@@ -89,7 +89,7 @@ resource "aws_route_table" "prv" {
 
     tags {
         Name = "${var.aws_vpc["name"]}_rt_pub"
-        VPC = "${aws_vpc.vpc.tags.Name}"
+        VirtualNetwork = "${aws_vpc.vpc.tags.Name}"
         CreatedBy = "terraform"
     }
 }
@@ -104,7 +104,7 @@ resource "aws_subnet" "prv" {
 
     tags {
         Name = "${element(var.aws_subnet["prv_availability_zones"], count.index)}_prv"
-        VPC = "${aws_vpc.vpc.tags.Name}"
+        VirtualNetwork = "${aws_vpc.vpc.tags.Name}"
         CreatedBy = "terraform"
     }
 }
@@ -119,7 +119,7 @@ resource "aws_route_table_association" "prv" {
 # bastion security group
 
 resource "aws_security_group" "bastion" {
-    name = "VPC Bastion"
+    name = "Bastion"
     description = "Allows access from world to bastion"
     vpc_id = "${aws_vpc.vpc.id}"
 
@@ -139,7 +139,7 @@ resource "aws_security_group" "bastion" {
 
     tags {
         Name = "Bastion"
-        VPC = "${aws_vpc.vpc.tags.Name}"
+        VirtualNetwork = "${aws_vpc.vpc.tags.Name}"
         CreatedBy = "terraform"
     }
 }
@@ -147,7 +147,7 @@ resource "aws_security_group" "bastion" {
 # internal security group
 
 resource "aws_security_group" "internal" {
-    name = "VPC Internal SSH"
+    name = "Internal SSH"
     description = "Allows access from bastion to internal servers"
     vpc_id = "${aws_vpc.vpc.id}"
 
@@ -167,48 +167,57 @@ resource "aws_security_group" "internal" {
 
     tags {
         Name = "Internal from bastion"
-        VPC = "${aws_vpc.vpc.tags.Name}"
+        VirtualNetwork = "${aws_vpc.vpc.tags.Name}"
         CreatedBy = "terraform"
     }
 
     depends_on = [ "aws_instance.bastion" ]
 }
 
-# recover ubuntu image
+# bastion public ip
 
-data "aws_ami" "default" {
-    most_recent = true
-
-    filter {
-        name = "name"
-        values = [ "amzn-ami-hvm-*-gp2" ]
-    }
-
-    filter {
-        name = "virtualization-type"
-        values = ["hvm"]
-    }
-
-    owners = ["amazon"]
+resource "aws_eip" "bastion" {
+    vpc         = true
+    instance    = "${aws_instance.bastion.id}"
 }
 
 # bastion server
 
 resource "aws_instance" "bastion" {
-    ami = "${data.aws_ami.default.id}"
-
-    instance_type   = "t2.nano"
-    key_name        = "terraform"
+    instance_type   = "${var.aws_instance["instance_type"]}"
+    ami             = "${var.aws_instance["ami"]}"
+    key_name        = "${var.aws_instance["key_name"]}"
 
     subnet_id              = "${aws_subnet.pub.1.id}"
     vpc_security_group_ids = [ "${aws_security_group.bastion.id}" ]
 
     tags {
         Name = "SSH Bastion"
-        VPC = "${aws_vpc.vpc.tags.Name}"
+        VirtualNetwork = "${aws_vpc.vpc.tags.Name}"
         CreatedBy = "terraform"
     }
 
     depends_on = [ "aws_security_group.bastion" ]
+}
+
+# instances to test internal subnets
+
+resource "aws_instance" "test" {
+    count = "${length(var.aws_subnet["prv_cidr_blocks"])}"
+
+    instance_type   = "${var.aws_instance["instance_type"]}"
+    ami             = "${var.aws_instance["ami"]}"
+    key_name        = "${var.aws_instance["key_name"]}"
+
+    subnet_id              = "${element(aws_subnet.prv.*.id, count.index)}"
+    vpc_security_group_ids = [ "${aws_security_group.internal.id}" ]
+
+    tags {
+        Name = "Private Subnet Instance"
+        VirtualNetwork = "${aws_vpc.vpc.tags.Name}"
+        CreatedBy = "terraform"
+    }
+
+    depends_on = [ "aws_security_group.internal" ]
 }
 
