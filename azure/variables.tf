@@ -15,8 +15,8 @@ variable "azr_subnets" {
     type = "map"
 
     default = {
-        pub = []
-        prv = []
+        pub_cidr_blocks = []
+        prv_cidr_blocks = []
     }
 }
 
@@ -25,7 +25,6 @@ variable "azr_virtual_machine" {
 
     default = {
         vm_size = ""
-        computer_name = ""
         admin_username = ""
         admin_password = ""
     }

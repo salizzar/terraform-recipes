@@ -24,23 +24,29 @@ resource "azurerm_virtual_network" "vn" {
     }
 }
 
+# route table to be used by subnets
+
 resource "azurerm_route_table" "rt" {
     name = "${var.azr_location}"
     location = "${azurerm_virtual_network.vn.location}"
     resource_group_name = "${azurerm_resource_group.rg.name}"
 }
 
+# public route
+
 resource "azurerm_route" "pub" {
-    name = "${var.azr_location} Pub"
+    name = "${var.azr_location}_pub"
     resource_group_name = "${azurerm_resource_group.rg.name}"
     route_table_name = "${azurerm_route_table.rt.name}"
 
-    address_prefix = "0.0.0.0/0"
+    address_prefix = "${var.azr_vn["address_space"]}"
     next_hop_type = "vnetlocal"
 }
 
+# private route
+
 resource "azurerm_route" "prv" {
-    name = "${var.azr_location} Prv"
+    name = "${var.azr_location}_prv"
     resource_group_name = "${azurerm_resource_group.rg.name}"
     route_table_name = "${azurerm_route_table.rt.name}"
 
@@ -48,64 +54,44 @@ resource "azurerm_route" "prv" {
     next_hop_type = "internet"
 }
 
-resource "azurerm_subnet" "pub" {
-    count = "${length(var.azr_subnets["pub"])}"
+# public subnets
 
-    name = "Pub Subnet ${count.index}"
+resource "azurerm_subnet" "pub" {
+    count = "${length(var.azr_subnets["pub_cidr_blocks"])}"
+
+    name = "pub_subnet_${count.index}"
     resource_group_name = "${azurerm_resource_group.rg.name}"
     virtual_network_name = "${azurerm_virtual_network.vn.name}"
     route_table_id = "${azurerm_route_table.rt.id}"
 
-    address_prefix = "${element(var.azr_subnets["pub"], count.index)}"
+    address_prefix = "${element(var.azr_subnets["pub_cidr_blocks"], count.index)}"
 }
+
+# private subnets
 
 resource "azurerm_subnet" "prv" {
-    count = "${length(var.azr_subnets["prv"])}"
+    count = "${length(var.azr_subnets["prv_cidr_blocks"])}"
 
-    name = "Prv Subnet ${count.index}"
+    name = "prv_subnet_${count.index}"
     resource_group_name = "${azurerm_resource_group.rg.name}"
     virtual_network_name = "${azurerm_virtual_network.vn.name}"
     route_table_id = "${azurerm_route_table.rt.id}"
 
-    address_prefix = "${element(var.azr_subnets["prv"], count.index)}"
+    address_prefix = "${element(var.azr_subnets["prv_cidr_blocks"], count.index)}"
 }
 
-resource "azurerm_network_interface" "pub" {
-    count = "${length(var.azr_subnets["pub"])}"
-
-    name = "Pub Nic ${count.index}"
-    location = "${var.azr_location}"
-    resource_group_name = "${azurerm_resource_group.rg.name}"
-
-    ip_configuration {
-        name = "NIC Pub"
-        subnet_id = "${element(azurerm_subnet.pub.*.id, count.index)}"
-        private_ip_address_allocation = "dynamic"
-    }
-}
-
-resource "azurerm_network_interface" "prv" {
-    count = "${length(var.azr_subnets["prv"])}"
-
-    name = "Prv Nic ${count.index}"
-    location = "${var.azr_location}"
-    resource_group_name = "${azurerm_resource_group.rg.name}"
-
-    ip_configuration {
-        name = "NIC Prv"
-        subnet_id = "${element(azurerm_subnet.prv.*.id, count.index)}"
-        private_ip_address_allocation = "dynamic"
-    }
-}
+# internal security group
 
 resource "azurerm_network_security_group" "sg" {
-    name = "VPC Internal SSH"
+    name = "VPC_Internal_SSH"
     resource_group_name = "${azurerm_resource_group.rg.name}"
     location = "${azurerm_resource_group.rg.location}"
 }
 
+# bastion ingress security group rules
+
 resource "azurerm_network_security_rule" "bastion-ssh-inbound" {
-    name = "Bastion inbound traffic"
+    name = "Bastion_Inbound_Traffic"
     resource_group_name = "${azurerm_resource_group.rg.name}"
     network_security_group_name = "${azurerm_network_security_group.sg.name}"
     priority = 100
@@ -117,12 +103,14 @@ resource "azurerm_network_security_rule" "bastion-ssh-inbound" {
     source_address_prefix = "*"
     destination_address_prefix = "*"
 }
+
+# bastion egress security group rules
 
 resource "azurerm_network_security_rule" "bastion-ssh-outbound" {
-    name = "Bastion outbound traffic"
+    name = "Bastion_Outbound_Traffic"
     resource_group_name = "${azurerm_resource_group.rg.name}"
     network_security_group_name = "${azurerm_network_security_group.sg.name}"
-    priority = 100
+    priority = 101
     direction = "Outbound"
     access = "Allow"
     protocol = "*"
@@ -132,79 +120,111 @@ resource "azurerm_network_security_rule" "bastion-ssh-outbound" {
     destination_address_prefix = "*"
 }
 
+# internal ingress security group rules
+
 resource "azurerm_network_security_rule" "internal-inbound-traffic" {
-    name = "Internal inbound traffic"
+    name = "Internal_Inbound_Traffic"
     resource_group_name = "${azurerm_resource_group.rg.name}"
     network_security_group_name = "${azurerm_network_security_group.sg.name}"
-    priority = 100
+    priority = 102
     direction = "Inbound"
     access = "Allow"
     protocol = "Tcp"
     source_port_range = "22"
     destination_port_range = "22"
-    source_address_prefix = "${var.azr_vn["address_space"]}" #TODO: review this
+    source_address_prefix = "${azurerm_network_interface.bastion.private_ip_address}/32"
     destination_address_prefix = "*"
 }
 
+# internal egress security group rules
+
 resource "azurerm_network_security_rule" "internal-outbound-traffic" {
-    name = "Internal outbound traffic"
+    name = "Internal_Outbound_Traffic"
     resource_group_name = "${azurerm_resource_group.rg.name}"
     network_security_group_name = "${azurerm_network_security_group.sg.name}"
-    priority = 100
+    priority = 103
     direction = "Outbound"
     access = "Allow"
     protocol = "*"
     source_port_range = "*"
     destination_port_range = "*"
-    source_address_prefix = "*"
+    source_address_prefix = "${var.azr_vn["address_space"]}"
     destination_address_prefix = "*"
 }
 
+# storage to vms
+
 resource "azurerm_storage_account" "storage" {
-    name                = "storage"
+    name                = "terraform"
     resource_group_name = "${azurerm_resource_group.rg.name}"
 
     location     = "${azurerm_resource_group.rg.location}"
     account_type = "${var.azr_storage_account["account_type"]}"
 
     tags {
-        Name = "${azurerm_resource_group.rg.name}-storage"
-        VN = "${azurerm_virtual_network.vn.tags.Name}"
+        VirtualNetwork = "${azurerm_virtual_network.vn.tags.Name}"
         CreatedBy = "terraform"
     }
 }
 
-resource "azurerm_storage_container" "bastion" {
+resource "azurerm_storage_container" "vhds" {
     name                  = "vhds"
     resource_group_name   = "${azurerm_resource_group.rg.name}"
     storage_account_name  = "${azurerm_storage_account.storage.name}"
     container_access_type = "private"
 }
 
+# bastion server
+
+resource "azurerm_public_ip" "bastion" {
+    name                            = "bastion"
+    resource_group_name             = "${azurerm_resource_group.rg.name}"
+    location                        = "${azurerm_resource_group.rg.location}"
+    public_ip_address_allocation    = "dynamic"
+
+    tags {
+        VirtualNetwork  = "${azurerm_virtual_network.vn.tags.Name}"
+        CreatedBy       = "terraform"
+    }
+}
+
+resource "azurerm_network_interface" "bastion" {
+    name = "pub_nic_bastion"
+    location = "${var.azr_location}"
+    resource_group_name = "${azurerm_resource_group.rg.name}"
+
+    ip_configuration {
+        name = "pub_nic_bastion"
+        subnet_id = "${element(azurerm_subnet.pub.*.id, 1)}"
+        public_ip_address_id = "${azurerm_public_ip.bastion.id}"
+        private_ip_address_allocation = "dynamic"
+    }
+}
+
 resource "azurerm_virtual_machine" "bastion" {
     name = "bastion"
     resource_group_name = "${azurerm_resource_group.rg.name}"
     location = "${azurerm_resource_group.rg.location}"
-    network_interface_ids = [ "${element(azurerm_network_interface.pub.*.id, 1)}" ]
+    network_interface_ids = [ "${azurerm_network_interface.bastion.id}" ]
 
     vm_size = "${var.azr_virtual_machine["vm_size"]}"
 
     storage_image_reference {
-        publisher = "Canonical"
-        offer = "UbuntuServer"
-        sku = "16.04.2-LTS"
-        version = "latest"
+        publisher = "${var.azr_virtual_machine["storage_image_reference_publisher"]}"
+        offer = "${var.azr_virtual_machine["storage_image_reference_offer"]}"
+        sku = "${var.azr_virtual_machine["storage_image_reference_sku"]}"
+        version = "${var.azr_virtual_machine["storage_image_reference_version"]}"
     }
 
     storage_os_disk {
         name = "bastion"
-        vhd_uri = "${azurerm_storage_account.storage.primary_blob_endpoint}${azurerm_storage_container.bastion.name}/bastion.vhd"
+        vhd_uri = "${azurerm_storage_account.storage.primary_blob_endpoint}${azurerm_storage_container.vhds.name}/bastion.vhd"
         caching = "ReadWrite"
         create_option = "FromImage"
     }
 
     os_profile {
-        computer_name = "${var.azr_virtual_machine["computer_name"]}"
+        computer_name = "bastion"
         admin_username = "${var.azr_virtual_machine["admin_username"]}"
         admin_password = "${var.azr_virtual_machine["admin_password"]}"
     }
@@ -215,7 +235,64 @@ resource "azurerm_virtual_machine" "bastion" {
 
     tags {
         Name = "SSH Bastion"
-        VN = "${azurerm_virtual_network.vn.tags.Name}"
+        VirtualNetwork = "${azurerm_virtual_network.vn.tags.Name}"
+        CreatedBy = "terraform"
+    }
+}
+
+# instances to test internal subnets
+
+resource "azurerm_network_interface" "prv" {
+    count = "${length(var.azr_subnets["prv_cidr_blocks"])}"
+
+    name = "prv_nic_${count.index}"
+    location = "${var.azr_location}"
+    resource_group_name = "${azurerm_resource_group.rg.name}"
+
+    ip_configuration {
+        name = "prv_nic_${count.index}"
+        subnet_id = "${element(azurerm_subnet.prv.*.id, count.index)}"
+        private_ip_address_allocation = "dynamic"
+    }
+}
+
+resource "azurerm_virtual_machine" "test" {
+    count = "${length(var.azr_subnets["prv_cidr_blocks"])}"
+
+    name = "test-${count.index}"
+    resource_group_name = "${azurerm_resource_group.rg.name}"
+    location = "${azurerm_resource_group.rg.location}"
+    network_interface_ids = [ "${element(azurerm_network_interface.prv.*.id, count.index)}" ]
+
+    vm_size = "${var.azr_virtual_machine["vm_size"]}"
+
+    storage_image_reference {
+        publisher = "${var.azr_virtual_machine["storage_image_reference_publisher"]}"
+        offer = "${var.azr_virtual_machine["storage_image_reference_offer"]}"
+        sku = "${var.azr_virtual_machine["storage_image_reference_sku"]}"
+        version = "${var.azr_virtual_machine["storage_image_reference_version"]}"
+    }
+
+    storage_os_disk {
+        name = "test-${count.index}"
+        vhd_uri = "${azurerm_storage_account.storage.primary_blob_endpoint}${azurerm_storage_container.vhds.name}/test-${count.index}.vhd"
+        caching = "ReadWrite"
+        create_option = "FromImage"
+    }
+
+    os_profile {
+        computer_name = "test-${count.index}"
+        admin_username = "${var.azr_virtual_machine["admin_username"]}"
+        admin_password = "${var.azr_virtual_machine["admin_password"]}"
+    }
+
+    os_profile_linux_config {
+        disable_password_authentication = false
+    }
+
+    tags {
+        Name = "Private Subnet Instance ${count.index}"
+        VirtualNetwork = "${azurerm_virtual_network.vn.tags.Name}"
         CreatedBy = "terraform"
     }
 }
