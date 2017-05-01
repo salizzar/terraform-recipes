@@ -34,6 +34,7 @@ variable "azr_storage_account" {
     type = "map"
 
     default = {
+        name = ""
         account_type = ""
     }
 }

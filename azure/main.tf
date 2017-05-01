@@ -155,7 +155,7 @@ resource "azurerm_network_security_rule" "internal-outbound-traffic" {
 # storage to vms
 
 resource "azurerm_storage_account" "storage" {
-    name                = "terraform"
+    name                = "${var.azr_storage_account["name"]}"
     resource_group_name = "${azurerm_resource_group.rg.name}"
 
     location     = "${azurerm_resource_group.rg.location}"
