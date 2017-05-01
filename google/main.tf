@@ -7,6 +7,18 @@ resource "google_compute_network" "vn" {
     description = "${var.gce_network["description"]}"
 }
 
+resource "google_compute_route" "rt" {
+    network     = "${google_compute_network.vn.name}"
+    name        = "noip-internet-rt"
+    dest_range  = "0.0.0.0/0"
+    priority    = 100
+
+    tags        = [ "noip" ]
+
+    next_hop_instance = "${google_compute_instance.bastion.name}"
+    next_hop_instance_zone = "${google_compute_instance.bastion.zone}"
+}
+
 # public subnets
 
 resource "google_compute_subnetwork" "pub" {
@@ -29,8 +41,8 @@ resource "google_compute_subnetwork" "prv" {
 
 # bastion firewall
 
-resource "google_compute_firewall" "bastion" {
-    name            = "bastionfw"
+resource "google_compute_firewall" "bastion-ssh" {
+    name            = "bastionfw-ssh"
     network         = "${google_compute_network.vn.name}"
     source_ranges   = [ "0.0.0.0/0" ]
 
@@ -44,10 +56,30 @@ resource "google_compute_firewall" "bastion" {
     }
 }
 
+resource "google_compute_firewall" "bastion-noip" {
+    name            = "bastionfw-noip"
+    network         = "${google_compute_network.vn.name}"
+    source_ranges   = [ "${google_compute_subnetwork.prv.*.ip_cidr_range}" ]
+
+    allow {
+        protocol    = "icmp"
+    }
+
+    allow {
+        protocol    = "tcp"
+        ports       = [ "1-65535" ]
+    }
+
+    allow {
+        protocol    = "udp"
+        ports       = [ "1-65535" ]
+    }
+}
+
 # internal firewall
 
-resource "google_compute_firewall" "internal" {
-    name            = "internalfw"
+resource "google_compute_firewall" "internal-ssh" {
+    name            = "internalfw-ssh"
     network         = "${google_compute_network.vn.name}"
     source_ranges   = [ "${google_compute_instance.bastion.network_interface.0.address}/32" ]
 
@@ -58,6 +90,26 @@ resource "google_compute_firewall" "internal" {
     allow {
         protocol    = "tcp"
         ports       = [ "22" ]
+    }
+}
+
+resource "google_compute_firewall" "internal-traffic" {
+    name            = "internalfw-internet"
+    network         = "${google_compute_network.vn.name}"
+    source_ranges   = [ "${google_compute_subnetwork.prv.*.ip_cidr_range}" ]
+
+    allow {
+        protocol    = "icmp"
+    }
+
+    allow {
+        protocol    = "tcp"
+        ports       = [ "1-65535" ]
+    }
+
+    allow {
+        protocol    = "udp"
+        ports       = [ "1-65535" ]
     }
 }
 
@@ -106,7 +158,7 @@ resource "google_compute_instance" "test" {
     machine_type    = "${var.gce_instance["machine_type"]}"
     zone            = "${element(var.gce_subnets["prv_zones"], count.index)}"
 
-    tags            = [ "terraform", "test" ]
+    tags            = [ "terraform", "test", "noip" ]
 
     disk {
         image       = "${var.gce_instance["disk_image"]}"
@@ -126,5 +178,4 @@ resource "google_compute_instance" "test" {
         CreatedBy   = "terraform"
     }
 }
-
 
