@@ -1,5 +1,4 @@
 provider "google" {
-    credentials = "${file("/root/terraform.json")}"
 }
 
 resource "google_compute_network" "vn" {

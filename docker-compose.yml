@@ -17,11 +17,10 @@ services:
       ARM_TENANT_ID: ${ARM_TENANT_ID}
 
       # google
-      GOOGLE_CREDENTIALS: /root/terraform.json
+      GOOGLE_CREDENTIALS: ${GOOGLE_CREDENTIALS}
       GOOGLE_PROJECT: ${GOOGLE_PROJECT}
       GOOGLE_REGION: ${GOOGLE_REGION}
     volumes:
-      - ${GOOGLE_CREDENTIALS}:/root/terraform.json
       - ${HOME}/.ssh:/root/.ssh
       - .:/workdir
 
