@@ -119,7 +119,7 @@ resource "google_compute_address" "bastion" {
 }
 
 resource "google_compute_instance" "bastion" {
-    name            = "bastion"
+    name            = "ssh-bastion"
     machine_type    = "${var.gce_instance["machine_type"]}"
     zone            = "${element(var.gce_subnets["pub_zones"], 1)}"
     can_ip_forward  = true

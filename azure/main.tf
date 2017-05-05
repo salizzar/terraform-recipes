@@ -202,7 +202,7 @@ resource "azurerm_network_interface" "bastion" {
 }
 
 resource "azurerm_virtual_machine" "bastion" {
-    name = "bastion"
+    name = "ssh-bastion"
     resource_group_name = "${azurerm_resource_group.rg.name}"
     location = "${azurerm_resource_group.rg.location}"
     network_interface_ids = [ "${azurerm_network_interface.bastion.id}" ]
@@ -234,7 +234,7 @@ resource "azurerm_virtual_machine" "bastion" {
     }
 
     tags {
-        Name = "SSH Bastion"
+        Name = "ssh-bastion"
         VirtualNetwork = "${azurerm_virtual_network.vn.tags.Name}"
         CreatedBy = "terraform"
     }

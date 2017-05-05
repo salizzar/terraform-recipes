@@ -192,7 +192,7 @@ resource "aws_instance" "bastion" {
     vpc_security_group_ids = [ "${aws_security_group.bastion.id}" ]
 
     tags {
-        Name = "SSH Bastion"
+        Name = "ssh-bastion"
         VirtualNetwork = "${aws_vpc.vpc.tags.Name}"
         CreatedBy = "terraform"
     }
@@ -213,7 +213,7 @@ resource "aws_instance" "test" {
     vpc_security_group_ids = [ "${aws_security_group.internal.id}" ]
 
     tags {
-        Name = "Private Subnet Instance"
+        Name = "test-${count.index}"
         VirtualNetwork = "${aws_vpc.vpc.tags.Name}"
         CreatedBy = "terraform"
     }
