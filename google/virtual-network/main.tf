@@ -55,26 +55,6 @@ resource "google_compute_firewall" "bastion-ssh" {
     }
 }
 
-resource "google_compute_firewall" "bastion-noip" {
-    name            = "bastionfw-noip"
-    network         = "${google_compute_network.vn.name}"
-    source_ranges   = [ "${google_compute_subnetwork.prv.*.ip_cidr_range}" ]
-
-    allow {
-        protocol    = "icmp"
-    }
-
-    allow {
-        protocol    = "tcp"
-        ports       = [ "1-65535" ]
-    }
-
-    allow {
-        protocol    = "udp"
-        ports       = [ "1-65535" ]
-    }
-}
-
 # internal firewall
 
 resource "google_compute_firewall" "internal-ssh" {
@@ -91,26 +71,6 @@ resource "google_compute_firewall" "internal-ssh" {
         ports       = [ "22" ]
     }
 }
-
-#resource "google_compute_firewall" "internal-traffic" {
-#    name            = "internalfw-internet"
-#    network         = "${google_compute_network.vn.name}"
-#    source_ranges   = [ "${google_compute_subnetwork.pub.*.ip_cidr_range}", "${google_compute_subnetwork.prv.*.ip_cidr_range}" ]
-#
-#    allow {
-#        protocol    = "icmp"
-#    }
-#
-#    allow {
-#        protocol    = "tcp"
-#        ports       = [ "1-65535" ]
-#    }
-#
-#    allow {
-#        protocol    = "udp"
-#        ports       = [ "1-65535" ]
-#    }
-#}
 
 # bastion server
 

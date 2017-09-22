@@ -10,7 +10,7 @@ resource "google_compute_firewall" "swarm" {
 
     allow {
         protocol    = "udp"
-        ports       = [ "7946" ]
+        ports       = [ "4789", "7946" ]
     }
 }
 
