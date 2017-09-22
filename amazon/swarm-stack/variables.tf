@@ -1,15 +1,8 @@
-variable "aws_region" {
-    type = "string"
-}
-
 variable "aws_vpc" {
     type = "map"
 
     default = {
         name = ""
-        cidr_block = ""
-        enable_dns_support = ""
-        enable_dns_hostnames = ""
     }
 }
 
@@ -17,26 +10,19 @@ variable "aws_subnet" {
     type = "map"
 
     default = {
-        pub_cidr_blocks = []
-        prv_cidr_blocks = []
-        pub_availability_zones = []
-        prv_availability_zones = []
+        cidr_blocks = []
+        ids = []
     }
 }
 
-variable "aws_instance" {
+variable "aws_security_group" {
     type = "map"
 
     default = {
-        instance_type = ""
-        ami = ""
-        key_name = ""
+        internal = ""
+        instance = ""
     }
 }
-
-#
-# docker swarm
-#
 
 variable "aws_swarm_mgr_instance" {
     type = "map"

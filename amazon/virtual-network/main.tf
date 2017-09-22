@@ -34,7 +34,7 @@ resource "aws_nat_gateway" "default" {
     allocation_id   = "${aws_eip.eip_nat.id}"
     subnet_id       = "${aws_subnet.pub.1.id}"
 
-    depends_on      = [ "aws_internet_gateway.default" ]
+    depends_on      = [ "aws_internet_gateway.default", "aws_subnet.pub" ]
 }
 
 # public subnets
@@ -158,13 +158,6 @@ resource "aws_security_group" "internal" {
         cidr_blocks = [ "${aws_instance.bastion.private_ip}/32" ]
     }
 
-    egress {
-        from_port   = 0
-        to_port     = 0
-        protocol    = "-1"
-        cidr_blocks = [ "0.0.0.0/0" ]
-    }
-
     tags {
         Name = "Internal from bastion"
         VirtualNetwork = "${aws_vpc.vpc.tags.Name}"
@@ -197,27 +190,6 @@ resource "aws_instance" "bastion" {
         CreatedBy = "terraform"
     }
 
-    depends_on = [ "aws_security_group.bastion" ]
-}
-
-# instances to test internal subnets
-
-resource "aws_instance" "test" {
-    count = "${length(var.aws_subnet["prv_cidr_blocks"])}"
-
-    instance_type   = "${var.aws_instance["instance_type"]}"
-    ami             = "${var.aws_instance["ami"]}"
-    key_name        = "${var.aws_instance["key_name"]}"
-
-    subnet_id              = "${element(aws_subnet.prv.*.id, count.index)}"
-    vpc_security_group_ids = [ "${aws_security_group.internal.id}" ]
-
-    tags {
-        Name = "test-${count.index}"
-        VirtualNetwork = "${aws_vpc.vpc.tags.Name}"
-        CreatedBy = "terraform"
-    }
-
-    depends_on = [ "aws_security_group.internal" ]
+    depends_on = [ "aws_security_group.bastion", "aws_subnet.pub" ]
 }
 

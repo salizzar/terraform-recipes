@@ -92,30 +92,30 @@ resource "google_compute_firewall" "internal-ssh" {
     }
 }
 
-resource "google_compute_firewall" "internal-traffic" {
-    name            = "internalfw-internet"
-    network         = "${google_compute_network.vn.name}"
-    source_ranges   = [ "${google_compute_subnetwork.prv.*.ip_cidr_range}" ]
-
-    allow {
-        protocol    = "icmp"
-    }
-
-    allow {
-        protocol    = "tcp"
-        ports       = [ "1-65535" ]
-    }
-
-    allow {
-        protocol    = "udp"
-        ports       = [ "1-65535" ]
-    }
-}
+#resource "google_compute_firewall" "internal-traffic" {
+#    name            = "internalfw-internet"
+#    network         = "${google_compute_network.vn.name}"
+#    source_ranges   = [ "${google_compute_subnetwork.pub.*.ip_cidr_range}", "${google_compute_subnetwork.prv.*.ip_cidr_range}" ]
+#
+#    allow {
+#        protocol    = "icmp"
+#    }
+#
+#    allow {
+#        protocol    = "tcp"
+#        ports       = [ "1-65535" ]
+#    }
+#
+#    allow {
+#        protocol    = "udp"
+#        ports       = [ "1-65535" ]
+#    }
+#}
 
 # bastion server
 
 resource "google_compute_address" "bastion" {
-  name = "bastion-ip"
+    name = "bastion-ip"
 }
 
 resource "google_compute_instance" "bastion" {
@@ -125,8 +125,10 @@ resource "google_compute_instance" "bastion" {
     can_ip_forward  = true
     tags            = [ "terraform", "ssh" ]
 
-    disk {
-        image       = "${var.gce_instance["disk_image"]}"
+    boot_disk {
+        initialize_params {
+            image   = "${var.gce_instance["disk_image"]}"
+        }
     }
 
     network_interface {
@@ -138,41 +140,11 @@ resource "google_compute_instance" "bastion" {
     }
 
     metadata {
-        ssh-keys    = "ubuntu:${file("/root/.ssh/gce.pub")}"
+        ssh-keys    = "ubuntu:${file("~/.ssh/gce.pub")}"
     }
 
     metadata {
         Name        = "SSH Bastion"
-        VN          = "${google_compute_network.vn.name}"
-        CreatedBy   = "terraform"
-    }
-}
-
-# instances to test internal subnets
-
-resource "google_compute_instance" "test" {
-    count = "${length(var.gce_subnets["prv_cidr_blocks"])}"
-
-    name            = "test-${count.index}"
-    machine_type    = "${var.gce_instance["machine_type"]}"
-    zone            = "${element(var.gce_subnets["prv_zones"], count.index)}"
-
-    tags            = [ "terraform", "test", "noip" ]
-
-    disk {
-        image       = "${var.gce_instance["disk_image"]}"
-    }
-
-    network_interface {
-        subnetwork  = "${element(google_compute_subnetwork.prv.*.name, count.index)}"
-    }
-
-    metadata {
-        ssh-keys    = "ubuntu:${file("/root/.ssh/gce.pub")}"
-    }
-
-    metadata {
-        Name        = "Private Subnet Instance ${count.index}"
         VN          = "${google_compute_network.vn.name}"
         CreatedBy   = "terraform"
     }

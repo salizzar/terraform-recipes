@@ -136,22 +136,6 @@ resource "azurerm_network_security_rule" "internal-inbound-traffic" {
     destination_address_prefix = "*"
 }
 
-# internal egress security group rules
-
-resource "azurerm_network_security_rule" "internal-outbound-traffic" {
-    name = "Internal_Outbound_Traffic"
-    resource_group_name = "${azurerm_resource_group.rg.name}"
-    network_security_group_name = "${azurerm_network_security_group.sg.name}"
-    priority = 103
-    direction = "Outbound"
-    access = "Allow"
-    protocol = "*"
-    source_port_range = "*"
-    destination_port_range = "*"
-    source_address_prefix = "${var.azr_vn["address_space"]}"
-    destination_address_prefix = "*"
-}
-
 # storage to vms
 
 resource "azurerm_storage_account" "storage" {
@@ -224,74 +208,21 @@ resource "azurerm_virtual_machine" "bastion" {
     }
 
     os_profile {
-        computer_name = "bastion"
-        admin_username = "${var.azr_virtual_machine["admin_username"]}"
-        admin_password = "${var.azr_virtual_machine["admin_password"]}"
+        computer_name = "ssh-bastion"
+        admin_username = "ubuntu"
     }
 
     os_profile_linux_config {
-        disable_password_authentication = false
+        disable_password_authentication = true
+
+        ssh_keys {
+            path = "/home/ubuntu/.ssh/authorized_keys"
+            key_data = "${file("~/.ssh/gce.pub")}"
+        }
     }
 
     tags {
         Name = "ssh-bastion"
-        VirtualNetwork = "${azurerm_virtual_network.vn.tags.Name}"
-        CreatedBy = "terraform"
-    }
-}
-
-# instances to test internal subnets
-
-resource "azurerm_network_interface" "prv" {
-    count = "${length(var.azr_subnets["prv_cidr_blocks"])}"
-
-    name = "prv_nic_${count.index}"
-    location = "${var.azr_location}"
-    resource_group_name = "${azurerm_resource_group.rg.name}"
-
-    ip_configuration {
-        name = "prv_nic_${count.index}"
-        subnet_id = "${element(azurerm_subnet.prv.*.id, count.index)}"
-        private_ip_address_allocation = "dynamic"
-    }
-}
-
-resource "azurerm_virtual_machine" "test" {
-    count = "${length(var.azr_subnets["prv_cidr_blocks"])}"
-
-    name = "test-${count.index}"
-    resource_group_name = "${azurerm_resource_group.rg.name}"
-    location = "${azurerm_resource_group.rg.location}"
-    network_interface_ids = [ "${element(azurerm_network_interface.prv.*.id, count.index)}" ]
-
-    vm_size = "${var.azr_virtual_machine["vm_size"]}"
-
-    storage_image_reference {
-        publisher = "${var.azr_virtual_machine["storage_image_reference_publisher"]}"
-        offer = "${var.azr_virtual_machine["storage_image_reference_offer"]}"
-        sku = "${var.azr_virtual_machine["storage_image_reference_sku"]}"
-        version = "${var.azr_virtual_machine["storage_image_reference_version"]}"
-    }
-
-    storage_os_disk {
-        name = "test-${count.index}"
-        vhd_uri = "${azurerm_storage_account.storage.primary_blob_endpoint}${azurerm_storage_container.vhds.name}/test-${count.index}.vhd"
-        caching = "ReadWrite"
-        create_option = "FromImage"
-    }
-
-    os_profile {
-        computer_name = "test-${count.index}"
-        admin_username = "${var.azr_virtual_machine["admin_username"]}"
-        admin_password = "${var.azr_virtual_machine["admin_password"]}"
-    }
-
-    os_profile_linux_config {
-        disable_password_authentication = false
-    }
-
-    tags {
-        Name = "Private Subnet Instance ${count.index}"
         VirtualNetwork = "${azurerm_virtual_network.vn.tags.Name}"
         CreatedBy = "terraform"
     }
