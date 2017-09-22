@@ -2,6 +2,6 @@
 upgrade_traefik: false
 
 traefik_log_max_size: 2g
-traefik_version: v1.3.6
-traefik_log_level: DEBUG
+traefik_version: v1.3.8
+traefik_log_level: ERROR
 

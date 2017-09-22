@@ -217,7 +217,7 @@ resource "azurerm_virtual_machine" "bastion" {
 
         ssh_keys {
             path = "/home/ubuntu/.ssh/authorized_keys"
-            key_data = "${file("~/.ssh/gce.pub")}"
+            key_data = "${file("~/.ssh/azr.pub")}"
         }
     }
 
