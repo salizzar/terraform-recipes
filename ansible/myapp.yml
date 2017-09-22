@@ -1,0 +1,45 @@
+version: '3'
+
+networks:
+  myapp:
+    driver: overlay
+  traefik-net:
+    external: true
+
+services:
+  whoami-1:
+    image: emilevauge/whoami
+    networks:
+      - myapp
+      - traefik-net
+    ports:
+      - 80
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == worker
+      labels:
+        - traefik.docker.network=traefik-net
+        - traefik.frontend.rule=Host:whoami-1.traefik
+        - traefik.frontend.passHostHeader=true
+        - traefik.port=80
+
+  whoami-2:
+    image: emilevauge/whoami
+    networks:
+      - myapp
+      - traefik-net
+    ports:
+      - 80
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == worker
+      labels:
+        - traefik.docker.network=traefik-net
+        - traefik.frontend.rule=Host:whoami-2.traefik
+        - traefik.frontend.passHostHeader=true
+        - traefik.port=80
+

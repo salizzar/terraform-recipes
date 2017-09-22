@@ -1,0 +1,10 @@
+---
+- hosts: swarm_managers[0]
+  become: true
+  tasks:
+    - name: Copy stack definition
+      copy: src=myapp.yml dest=/tmp/myapp.yml
+
+    - name: Deploy stack
+      shell: docker stack deploy --compose-file /tmp/myapp.yml myapp
+

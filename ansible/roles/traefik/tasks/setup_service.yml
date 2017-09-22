@@ -1,0 +1,41 @@
+---
+- name: Check if Traefik exists as a service on Swarm
+  shell: docker service ls --quiet --filter "name=traefik"
+  register: traefik_service_output
+
+- name: Display Traefik service id
+  debug: var=traefik_service_output.stdout
+
+- name: Remove traefik service when required
+  shell: docker service rm traefik
+  when: (traefik_service_output.stdout | trim != '') and upgrade_traefik
+
+- name: Create Traefik if not exists
+  shell: >
+    docker service create \
+      --mode global \
+      --name traefik \
+      --constraint 'node.role==manager' \
+      --publish 80:80 \
+      --publish 8080:8080 \
+      --publish 443:443 \
+      --network {{ traefik_network_name }} \
+      --mount type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock \
+      --mount type=bind,source={{ traefik_access_log }},target={{ traefik_access_log }} \
+      --log-opt max-size={{ traefik_log_max_size }} \
+      traefik:{{ traefik_version }} \
+        --accessLogsFile={{ traefik_access_log }} \
+        --loglevel={{ traefik_log_level }} \
+        --docker \
+        --docker.swarmmode \
+        --docker.watch \
+        --web
+  when: (traefik_service_output.stdout | trim == '') or upgrade_traefik
+  register: traefik_service_create_output
+
+- name: Check if service is running
+  shell: docker service inspect traefik
+  register: traefik_service_inspect_output
+  failed_when:
+    (traefik_service_inspect_output.stdout | trim == '')
+

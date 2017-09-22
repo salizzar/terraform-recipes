@@ -1,0 +1,9 @@
+---
+ansible_python_interpreter: /usr/bin/python3
+ansible_ssh_extra_args: -o StrictHostKeyChecking=no
+
+swarm_iface: eth0
+
+traefik_network_name: traefik-net
+traefik_access_log: /var/log/traefik.access.log
+

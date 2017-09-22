@@ -1,0 +1,18 @@
+---
+- include: setup_docker.yml
+  tags:
+    - setup_docker
+
+- include: setup_swarm.yml
+  tags:
+    - setup_swarm
+
+- include: setup_traefik.yml
+  tags:
+    - setup_traefik
+
+- include: deploy_stack.yml
+  tags:
+    - deploy_stack
+  when: not deploy is undefined
+

@@ -1,0 +1,39 @@
+---
+- name: Check if docker exists
+  stat:
+    path: "{{ docker_bin_path }}"
+  register: docker_check
+
+- name: Install Docker Ubuntu GPG key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+  when: not docker_check.stat.exists or upgrade_docker
+
+- name: Add Docker Ubuntu repository
+  apt_repository:
+    repo: 'deb https://download.docker.com/linux/ubuntu xenial stable'
+    filename: docker # save as /etc/apt/sources.list.d/docker.list
+    state: present
+
+- name: Install Docker
+  apt:
+    name: docker-ce={{ docker_version }}
+    state: present
+    update_cache: yes
+
+- name: Add user to Docker group
+  user: name={{ ansible_ssh_user }} group={{ ansible_ssh_user }} groups=docker append=yes state=present
+  when: not docker_check.stat.exists or upgrade_docker
+
+- name: Enable Experimental flag
+  lineinfile:
+    line: '{ "experimental": true }'
+    dest: /etc/docker/daemon.json
+    state: present
+    create: yes
+  when: docker_experimental_install
+
+- name: Ensure Docker is started
+  service: name=docker state=restarted
+

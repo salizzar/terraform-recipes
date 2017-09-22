@@ -1,0 +1,10 @@
+---
+- name: Check if Traefik exists as a service on Swarm
+  shell: docker network ls --quiet --filter "name={{ traefik_network_name }}"
+  register: traefik_network_output
+
+- name: Create Traefik network if not exists
+  shell: >
+    docker network create --driver overlay --attachable --subnet 10.2.0.0/24 {{ traefik_network_name }}
+  when: (traefik_network_output.stdout | trim == '')
+

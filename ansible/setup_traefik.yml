@@ -1,0 +1,14 @@
+---
+- hosts:
+    - swarm_managers
+  become: yes
+  tasks:
+    - name: Touch traefik access log
+      file: path={{ traefik_access_log }} owner={{ ansible_ssh_user }} state=touch
+
+- hosts:
+    - swarm_managers[0]
+  become: yes
+  roles:
+    - traefik
+

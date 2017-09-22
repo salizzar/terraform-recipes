@@ -1,0 +1,9 @@
+---
+docker_experimental_install: true
+
+upgrade_docker: false
+
+docker_bin_path: /usr/bin/docker
+
+docker_version: 17.06.1~ce-0~ubuntu
+
